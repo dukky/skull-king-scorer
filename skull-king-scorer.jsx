@@ -164,7 +164,9 @@ const SkullKingScorer = () => {
   // Setup Screen
   if (!gameStarted) {
     return (
-      <div style={styles.container}>
+      <>
+        <div style={styles.fixedBackground}></div>
+        <div style={styles.container}>
         <div style={styles.header}>
           <div style={styles.skull}>💀</div>
           <h1 style={styles.title}>Skull King</h1>
@@ -211,6 +213,7 @@ const SkullKingScorer = () => {
           )}
         </div>
       </div>
+      </>
     );
   }
 
@@ -218,7 +221,9 @@ const SkullKingScorer = () => {
   if (roundPhase === 'complete') {
     const sortedPlayers = [...players].sort((a, b) => b.totalScore - a.totalScore);
     return (
-      <div style={styles.container}>
+      <>
+        <div style={styles.fixedBackground}></div>
+        <div style={styles.container}>
         <div style={styles.header}>
           <div style={styles.skull}>🏴‍☠️</div>
           <h1 style={styles.title}>Battle Complete!</h1>
@@ -242,13 +247,16 @@ const SkullKingScorer = () => {
           </button>
         </div>
       </div>
+      </>
     );
   }
 
   // Bidding Phase
   if (roundPhase === 'bidding') {
     return (
-      <div style={styles.container}>
+      <>
+        <div style={styles.fixedBackground}></div>
+        <div style={styles.container}>
         <div style={styles.roundHeader}>
           <span style={styles.roundBadge}>Round {currentRound}/10</span>
           <span style={styles.cardsInfo}>{currentRound} card{currentRound > 1 ? 's' : ''} each</span>
@@ -288,12 +296,15 @@ const SkullKingScorer = () => {
           ⚔️ Start Round!
         </button>
       </div>
+      </>
     );
   }
 
   // Scoring Phase
   return (
-    <div style={styles.container}>
+    <>
+      <div style={styles.fixedBackground}></div>
+      <div style={styles.container}>
       <div style={styles.roundHeader}>
         <span style={styles.roundBadge}>Round {currentRound}/10</span>
         <span style={styles.cardsInfo}>Recording results</span>
@@ -359,11 +370,23 @@ const SkullKingScorer = () => {
         {currentRound < 10 ? '✅ Finish Round' : '🏆 End Game'}
       </button>
     </div>
+    </>
   );
 };
 
 const styles = {
+  fixedBackground: {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    background: 'linear-gradient(180deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)',
+    zIndex: 0,
+  },
   container: {
+    position: 'relative',
+    zIndex: 1,
     minHeight: '100dvh',
     padding: '20px',
     fontFamily: "'Cinzel', 'Georgia', serif",
@@ -704,8 +727,7 @@ styleSheet.textContent = `
   html, body {
     margin: 0;
     padding: 0;
-    background: linear-gradient(180deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
-    background-attachment: fixed;
+    background: #1a1a2e;
     min-height: 100vh;
   }
 `;
