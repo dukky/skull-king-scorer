@@ -1,7 +1,30 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 
-function usePersistedState(key, initialValue) {
-  const [value, setValue] = useState(() => {
+interface Player {
+  name: string;
+  totalScore: number;
+}
+
+interface PlayerRoundData {
+  bid: number;
+  tricks: number;
+  piratesCapture: number;
+  skullKingCapture: boolean;
+}
+
+interface RoundScore extends PlayerRoundData {
+  score: number;
+}
+
+interface GameHistoryEntry {
+  round: number;
+  scores: Record<number, RoundScore>;
+}
+
+type RoundPhase = 'bidding' | 'scoring' | 'complete';
+
+function usePersistedState<T>(key: string, initialValue: T): [T, React.Dispatch<React.SetStateAction<T>>] {
+  const [value, setValue] = useState<T>(() => {
     const stored = localStorage.getItem(`skullking_${key}`);
     return stored ? JSON.parse(stored) : initialValue;
   });
@@ -13,14 +36,46 @@ function usePersistedState(key, initialValue) {
   return [value, setValue];
 }
 
+interface NumberStepperProps {
+  value: number;
+  onDecrement: () => void;
+  onIncrement: () => void;
+  min?: number;
+  max?: number;
+  label?: string;
+}
+
+const NumberStepper = ({ value, onDecrement, onIncrement, min = 0, max = 10, label }: NumberStepperProps) => (
+  <div style={styles.stepper}>
+    {label && <span style={styles.stepperLabel}>{label}</span>}
+    <div style={styles.stepperControls}>
+      <button
+        style={{...styles.stepperBtn, opacity: value <= min ? 0.3 : 1}}
+        onClick={onDecrement}
+        disabled={value <= min}
+      >
+        −
+      </button>
+      <span style={styles.stepperValue}>{value}</span>
+      <button
+        style={{...styles.stepperBtn, opacity: value >= max ? 0.3 : 1}}
+        onClick={onIncrement}
+        disabled={value >= max}
+      >
+        +
+      </button>
+    </div>
+  </div>
+);
+
 const SkullKingScorer = () => {
   const [gameStarted, setGameStarted] = usePersistedState('gameStarted', false);
-  const [players, setPlayers] = usePersistedState('players', []);
+  const [players, setPlayers] = usePersistedState<Player[]>('players', []);
   const [playerName, setPlayerName] = useState('');
   const [currentRound, setCurrentRound] = usePersistedState('currentRound', 1);
-  const [roundPhase, setRoundPhase] = usePersistedState('roundPhase', 'bidding');
-  const [roundData, setRoundData] = usePersistedState('roundData', {});
-  const [gameHistory, setGameHistory] = usePersistedState('gameHistory', []);
+  const [roundPhase, setRoundPhase] = usePersistedState<RoundPhase>('roundPhase', 'bidding');
+  const [roundData, setRoundData] = usePersistedState<Record<number, PlayerRoundData>>('roundData', {});
+  const [gameHistory, setGameHistory] = usePersistedState<GameHistoryEntry[]>('gameHistory', []);
 
   const addPlayer = () => {
     if (playerName.trim() && players.length < 6) {
@@ -29,13 +84,13 @@ const SkullKingScorer = () => {
     }
   };
 
-  const removePlayer = (index) => {
+  const removePlayer = (index: number) => {
     setPlayers(players.filter((_, i) => i !== index));
   };
 
   const startGame = () => {
     if (players.length >= 2) {
-      const initialRoundData = {};
+      const initialRoundData: Record<number, PlayerRoundData> = {};
       players.forEach((_, i) => {
         initialRoundData[i] = { bid: 0, tricks: 0, piratesCapture: 0, skullKingCapture: false };
       });
@@ -44,24 +99,14 @@ const SkullKingScorer = () => {
     }
   };
 
-  const updateBid = (playerIndex, delta) => {
-    setRoundData(prev => ({
-      ...prev,
-      [playerIndex]: {
-        ...prev[playerIndex],
-        bid: Math.max(0, Math.min(currentRound, prev[playerIndex].bid + delta))
-      }
-    }));
-  };
-
-  const setBid = (playerIndex, value) => {
+  const setBid = (playerIndex: number, value: number) => {
     setRoundData(prev => ({
       ...prev,
       [playerIndex]: { ...prev[playerIndex], bid: value }
     }));
   };
 
-  const updateTricks = (playerIndex, delta) => {
+  const updateTricks = (playerIndex: number, delta: number) => {
     setRoundData(prev => ({
       ...prev,
       [playerIndex]: {
@@ -71,7 +116,7 @@ const SkullKingScorer = () => {
     }));
   };
 
-  const updatePiratesCapture = (playerIndex, delta) => {
+  const updatePiratesCapture = (playerIndex: number, delta: number) => {
     setRoundData(prev => ({
       ...prev,
       [playerIndex]: {
@@ -81,7 +126,7 @@ const SkullKingScorer = () => {
     }));
   };
 
-  const toggleSkullKingCapture = (playerIndex) => {
+  const toggleSkullKingCapture = (playerIndex: number) => {
     setRoundData(prev => ({
       ...prev,
       [playerIndex]: {
@@ -91,9 +136,9 @@ const SkullKingScorer = () => {
     }));
   };
 
-  const calculateScore = (data) => {
+  const calculateScore = (data: PlayerRoundData): number => {
     const { bid, tricks, piratesCapture, skullKingCapture } = data;
-    
+
     if (bid === 0) {
       // No-tricks bid
       if (tricks === 0) {
@@ -119,18 +164,18 @@ const SkullKingScorer = () => {
   };
 
   const finishRound = () => {
-    const roundScores = {};
+    const roundScores: Record<number, RoundScore> = {};
     const updatedPlayers = players.map((player, i) => {
       const score = calculateScore(roundData[i]);
       roundScores[i] = { ...roundData[i], score };
       return { ...player, totalScore: player.totalScore + score };
     });
-    
+
     setGameHistory([...gameHistory, { round: currentRound, scores: roundScores }]);
     setPlayers(updatedPlayers);
-    
+
     if (currentRound < 10) {
-      const newRoundData = {};
+      const newRoundData: Record<number, PlayerRoundData> = {};
       players.forEach((_, i) => {
         newRoundData[i] = { bid: 0, tricks: 0, piratesCapture: 0, skullKingCapture: false };
       });
@@ -163,29 +208,6 @@ const SkullKingScorer = () => {
     }
   };
 
-  const NumberStepper = ({ value, onDecrement, onIncrement, min = 0, max = 10, label }) => (
-    <div style={styles.stepper}>
-      {label && <span style={styles.stepperLabel}>{label}</span>}
-      <div style={styles.stepperControls}>
-        <button 
-          style={{...styles.stepperBtn, opacity: value <= min ? 0.3 : 1}} 
-          onClick={onDecrement}
-          disabled={value <= min}
-        >
-          −
-        </button>
-        <span style={styles.stepperValue}>{value}</span>
-        <button 
-          style={{...styles.stepperBtn, opacity: value >= max ? 0.3 : 1}} 
-          onClick={onIncrement}
-          disabled={value >= max}
-        >
-          +
-        </button>
-      </div>
-    </div>
-  );
-
   // Setup Screen
   if (!gameStarted) {
     return (
@@ -197,30 +219,30 @@ const SkullKingScorer = () => {
           <h1 style={styles.title}>Skull King</h1>
           <p style={styles.subtitle}>Yo-Ho-Ho!</p>
         </div>
-        
+
         <div style={styles.setupCard}>
           <h2 style={styles.cardTitle}>Gather Yer Crew</h2>
           <p style={styles.hint}>2-6 pirates required</p>
-          
+
           <div style={styles.inputRow}>
             <input
               type="text"
               value={playerName}
               onChange={(e) => setPlayerName(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && addPlayer()}
+              onKeyDown={(e) => e.key === 'Enter' && addPlayer()}
               placeholder="Pirate name..."
               style={styles.input}
               maxLength={12}
             />
-            <button 
-              onClick={addPlayer} 
+            <button
+              onClick={addPlayer}
               style={styles.addBtn}
               disabled={!playerName.trim() || players.length >= 6}
             >
               +
             </button>
           </div>
-          
+
           <div style={styles.playerList}>
             {players.map((player, i) => (
               <div key={i} style={styles.playerChip}>
@@ -259,7 +281,7 @@ const SkullKingScorer = () => {
           <div style={styles.skull}>🏴‍☠️</div>
           <h1 style={styles.title}>Battle Complete!</h1>
         </div>
-        
+
         <div style={styles.resultsCard}>
           <h2 style={styles.cardTitle}>Final Standings</h2>
           {sortedPlayers.map((player, i) => (
@@ -272,7 +294,7 @@ const SkullKingScorer = () => {
               <span style={styles.resultScore}>{player.totalScore}</span>
             </div>
           ))}
-          
+
           <button onClick={resetGame} style={styles.startBtn}>
             New Game 🔄
           </button>
@@ -295,13 +317,13 @@ const SkullKingScorer = () => {
 
         <h2 style={styles.phaseTitle}>🤞 Place Yer Bids!</h2>
         <p style={styles.phaseHint}>How many tricks will ye win?</p>
-        
+
         <div style={styles.playersGrid}>
           {players.map((player, i) => (
             <div key={i} style={styles.playerCard}>
               <div style={styles.playerName}>☠️ {player.name}</div>
               <div style={styles.totalScore}>Total: {player.totalScore}</div>
-              
+
               <div style={styles.bidSection}>
                 <span style={styles.bidLabel}>Bid</span>
                 <div style={styles.bidButtons}>
@@ -322,7 +344,7 @@ const SkullKingScorer = () => {
             </div>
           ))}
         </div>
-        
+
         <button onClick={confirmBids} style={styles.actionBtn}>
           ⚔️ Start Round!
         </button>
@@ -342,18 +364,18 @@ const SkullKingScorer = () => {
       </div>
 
       <h2 style={styles.phaseTitle}>🎯 Record Results</h2>
-      
+
       <div style={styles.playersGrid}>
         {players.map((player, i) => {
           const data = roundData[i];
           const bidMet = data.bid === data.tricks;
           const score = calculateScore(data);
-          
+
           return (
             <div key={i} style={styles.playerCard}>
               <div style={styles.playerName}>☠️ {player.name}</div>
               <div style={styles.bidDisplay}>Bid: {data.bid}</div>
-              
+
               <NumberStepper
                 label="Tricks Won"
                 value={data.tricks}
@@ -361,11 +383,11 @@ const SkullKingScorer = () => {
                 onIncrement={() => updateTricks(i, 1)}
                 max={currentRound}
               />
-              
+
               {bidMet && data.bid > 0 && (
                 <div style={styles.bonusSection}>
                   <div style={styles.bonusTitle}>⭐ Bonuses</div>
-                  
+
                   <NumberStepper
                     label="Pirates caught by Skull King"
                     value={data.piratesCapture}
@@ -373,7 +395,7 @@ const SkullKingScorer = () => {
                     onIncrement={() => updatePiratesCapture(i, 1)}
                     max={5}
                   />
-                  
+
                   <button
                     onClick={() => toggleSkullKingCapture(i)}
                     style={{
@@ -385,7 +407,7 @@ const SkullKingScorer = () => {
                   </button>
                 </div>
               )}
-              
+
               <div style={{
                 ...styles.roundScore,
                 color: score >= 0 ? '#2ecc40' : '#ff4136'
@@ -396,7 +418,7 @@ const SkullKingScorer = () => {
           );
         })}
       </div>
-      
+
       <button onClick={finishRound} style={styles.actionBtn}>
         {currentRound < 10 ? '✅ Finish Round' : '🏆 End Game'}
       </button>
@@ -405,7 +427,7 @@ const SkullKingScorer = () => {
   );
 };
 
-const styles = {
+const styles: Record<string, React.CSSProperties> = {
   fixedBackground: {
     position: 'fixed',
     top: 0,
