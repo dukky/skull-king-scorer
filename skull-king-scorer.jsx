@@ -151,6 +151,18 @@ const SkullKingScorer = () => {
     setGameHistory([]);
   };
 
+  const clearPlayers = () => {
+    if (window.confirm('Remove all players?')) {
+      setPlayers([]);
+    }
+  };
+
+  const endGameEarly = () => {
+    if (window.confirm('End the game now? Current scores will be final.')) {
+      setRoundPhase('complete');
+    }
+  };
+
   const NumberStepper = ({ value, onDecrement, onIncrement, min = 0, max = 10, label }) => (
     <div style={styles.stepper}>
       {label && <span style={styles.stepperLabel}>{label}</span>}
@@ -218,7 +230,13 @@ const SkullKingScorer = () => {
               </div>
             ))}
           </div>
-          
+
+          {players.length > 0 && (
+            <button onClick={clearPlayers} style={styles.clearBtn}>
+              Clear Crew
+            </button>
+          )}
+
           {players.length >= 2 && (
             <button onClick={startGame} style={styles.startBtn}>
               Set Sail! ⚓
@@ -272,9 +290,9 @@ const SkullKingScorer = () => {
         <div style={styles.container}>
         <div style={styles.roundHeader}>
           <span style={styles.roundBadge}>Round {currentRound}/10</span>
-          <span style={styles.cardsInfo}>{currentRound} card{currentRound > 1 ? 's' : ''} each</span>
+          <button onClick={endGameEarly} style={styles.endGameBtn}>End Game</button>
         </div>
-        
+
         <h2 style={styles.phaseTitle}>🤞 Place Yer Bids!</h2>
         <p style={styles.phaseHint}>How many tricks will ye win?</p>
         
@@ -320,9 +338,9 @@ const SkullKingScorer = () => {
       <div style={styles.container}>
       <div style={styles.roundHeader}>
         <span style={styles.roundBadge}>Round {currentRound}/10</span>
-        <span style={styles.cardsInfo}>Recording results</span>
+        <button onClick={endGameEarly} style={styles.endGameBtn}>End Game</button>
       </div>
-      
+
       <h2 style={styles.phaseTitle}>🎯 Record Results</h2>
       
       <div style={styles.playersGrid}>
@@ -517,6 +535,27 @@ const styles = {
     letterSpacing: '2px',
     boxShadow: '0 5px 20px rgba(46,204,64,0.4)',
     marginTop: '10px',
+  },
+  clearBtn: {
+    padding: '10px 20px',
+    fontSize: '14px',
+    border: '1px solid #ff4136',
+    borderRadius: '10px',
+    background: 'transparent',
+    color: '#ff4136',
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+    marginBottom: '10px',
+  },
+  endGameBtn: {
+    padding: '8px 16px',
+    fontSize: '12px',
+    border: '1px solid rgba(255,65,54,0.5)',
+    borderRadius: '8px',
+    background: 'rgba(255,65,54,0.1)',
+    color: '#ff4136',
+    cursor: 'pointer',
+    fontFamily: 'inherit',
   },
   roundHeader: {
     display: 'flex',
