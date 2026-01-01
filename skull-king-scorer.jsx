@@ -456,6 +456,8 @@ const styles = {
     margin: '0 auto',
     border: '2px solid #b8860b',
     boxShadow: '0 10px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,215,0,0.2)',
+    boxSizing: 'border-box',
+    overflow: 'hidden',
   },
   cardTitle: {
     fontSize: '24px',
@@ -473,6 +475,9 @@ const styles = {
     display: 'flex',
     gap: '10px',
     marginBottom: '20px',
+    alignItems: 'stretch',
+    width: '100%',
+    boxSizing: 'border-box',
   },
   input: {
     flex: 1,
@@ -484,9 +489,11 @@ const styles = {
     color: '#f4e4bc',
     outline: 'none',
     fontFamily: 'inherit',
+    minWidth: 0,
+    boxSizing: 'border-box',
   },
   addBtn: {
-    width: '50px',
+    width: '54px',
     fontSize: '24px',
     border: '2px solid #b8860b',
     borderRadius: '10px',
@@ -494,6 +501,8 @@ const styles = {
     color: '#fff',
     cursor: 'pointer',
     fontWeight: 'bold',
+    flexShrink: 0,
+    boxSizing: 'border-box',
   },
   playerList: {
     display: 'flex',
