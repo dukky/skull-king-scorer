@@ -1,13 +1,26 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+
+function usePersistedState(key, initialValue) {
+  const [value, setValue] = useState(() => {
+    const stored = localStorage.getItem(`skullking_${key}`);
+    return stored ? JSON.parse(stored) : initialValue;
+  });
+
+  useEffect(() => {
+    localStorage.setItem(`skullking_${key}`, JSON.stringify(value));
+  }, [key, value]);
+
+  return [value, setValue];
+}
 
 const SkullKingScorer = () => {
-  const [gameStarted, setGameStarted] = useState(false);
-  const [players, setPlayers] = useState([]);
+  const [gameStarted, setGameStarted] = usePersistedState('gameStarted', false);
+  const [players, setPlayers] = usePersistedState('players', []);
   const [playerName, setPlayerName] = useState('');
-  const [currentRound, setCurrentRound] = useState(1);
-  const [roundPhase, setRoundPhase] = useState('bidding'); // 'bidding', 'scoring', 'complete'
-  const [roundData, setRoundData] = useState({});
-  const [gameHistory, setGameHistory] = useState([]);
+  const [currentRound, setCurrentRound] = usePersistedState('currentRound', 1);
+  const [roundPhase, setRoundPhase] = usePersistedState('roundPhase', 'bidding');
+  const [roundData, setRoundData] = usePersistedState('roundData', {});
+  const [gameHistory, setGameHistory] = usePersistedState('gameHistory', []);
 
   const addPlayer = () => {
     if (playerName.trim() && players.length < 6) {
@@ -130,8 +143,8 @@ const SkullKingScorer = () => {
   };
 
   const resetGame = () => {
+    setPlayers(players.map(p => ({ ...p, totalScore: 0 })));
     setGameStarted(false);
-    setPlayers([]);
     setCurrentRound(1);
     setRoundPhase('bidding');
     setRoundData({});
