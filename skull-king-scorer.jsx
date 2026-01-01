@@ -366,6 +366,7 @@ const styles = {
   container: {
     minHeight: '100dvh',
     background: 'linear-gradient(180deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)',
+    backgroundAttachment: 'fixed',
     padding: '20px',
     fontFamily: "'Cinzel', 'Georgia', serif",
     color: '#f4e4bc',
