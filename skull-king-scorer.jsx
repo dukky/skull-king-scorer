@@ -365,8 +365,6 @@ const SkullKingScorer = () => {
 const styles = {
   container: {
     minHeight: '100dvh',
-    background: 'linear-gradient(180deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)',
-    backgroundAttachment: 'fixed',
     padding: '20px',
     fontFamily: "'Cinzel', 'Georgia', serif",
     color: '#f4e4bc',
@@ -695,14 +693,21 @@ const styles = {
 const styleSheet = document.createElement('style');
 styleSheet.textContent = `
   @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&display=swap');
-  
+
   @keyframes bob {
     0%, 100% { transform: translateY(0); }
     50% { transform: translateY(-10px); }
   }
-  
+
   * { box-sizing: border-box; }
-  body { margin: 0; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: linear-gradient(180deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    background-attachment: fixed;
+    min-height: 100vh;
+  }
 `;
 document.head.appendChild(styleSheet);
 
