@@ -1,4 +1,15 @@
 <!DOCTYPE html>
+<!--
+  iOS Safari PWA Status Bar Notes:
+  - Currently using "black-translucent" but it doesn't fully work without viewport-fit=cover
+  - To get status bar to match theme color, would need:
+    1. viewport-fit=cover in viewport meta
+    2. Inline background color on body to prevent white flash
+    3. padding-top: env(safe-area-inset-top) on app container
+  - iOS only supports 3 status bar styles: default (white), black, black-translucent
+  - Chrome on iOS honors theme-color properly, Safari standalone does not
+  - See: https://developer.apple.com/library/archive/documentation/AppleApplications/Reference/SafariWebContent/ConfiguringWebApplications/ConfiguringWebApplications.html
+-->
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
