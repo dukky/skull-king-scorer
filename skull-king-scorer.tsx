@@ -230,13 +230,34 @@ const SkullKingScorer = () => {
 
   const finishRound = () => {
     const roundScores: Record<number, RoundScore> = {};
+
+    // Check if this round already exists in history (can happen after undo)
+    const existingRoundIndex = gameHistory.findIndex(entry => entry.round === currentRound);
+
     const updatedPlayers = players.map((player, i) => {
       const score = calculateScore(roundData[i]);
       roundScores[i] = { ...roundData[i], score };
-      return { ...player, totalScore: player.totalScore + score };
+
+      // Recalculate total from scratch to handle undo scenarios correctly
+      // Sum all previous rounds (excluding current if it exists) + current round
+      const previousRounds = existingRoundIndex >= 0
+        ? [...gameHistory.slice(0, existingRoundIndex), ...gameHistory.slice(existingRoundIndex + 1)]
+        : gameHistory;
+
+      const previousTotal = previousRounds.reduce((sum, entry) => sum + entry.scores[i].score, 0);
+      const total = previousTotal + score;
+
+      return { ...player, totalScore: total };
     });
 
-    const updatedHistory = [...gameHistory, { round: currentRound, scores: roundScores }];
+    // Replace existing round or append new round
+    const updatedHistory = existingRoundIndex >= 0
+      ? [
+          ...gameHistory.slice(0, existingRoundIndex),
+          { round: currentRound, scores: roundScores },
+          ...gameHistory.slice(existingRoundIndex + 1)
+        ]
+      : [...gameHistory, { round: currentRound, scores: roundScores }];
 
     setGameHistory(updatedHistory);
     setPlayers(updatedPlayers);
