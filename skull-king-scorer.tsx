@@ -88,6 +88,12 @@ const SkullKingScorer = () => {
   const [showHistory, setShowHistory] = useState(false);
   const [editingBid, setEditingBid] = useState<number | null>(null);
 
+  // Reset transient UI state when phase or round changes
+  useEffect(() => {
+    setShowHistory(false);
+    setEditingBid(null);
+  }, [currentRound, roundPhase]);
+
   const addPlayer = () => {
     if (playerName.trim() && players.length < 6) {
       setPlayers([...players, { name: playerName.trim(), totalScore: 0 }]);
@@ -147,9 +153,6 @@ const SkullKingScorer = () => {
       }))
     );
 
-    // Exit history view after undo to show the restored game state
-    setShowHistory(false);
-    setEditingBid(null);
   };
 
   const startGame = () => {
@@ -161,9 +164,6 @@ const SkullKingScorer = () => {
       setRoundData(initialRoundData);
       setGameStarted(true);
       setPhaseHistory([]);
-      // Reset UI navigation states
-      setShowHistory(false);
-      setEditingBid(null);
     }
   };
 
@@ -230,10 +230,16 @@ const SkullKingScorer = () => {
   const confirmBids = () => {
     savePhaseSnapshot();
     setRoundPhase('scoring');
-    setEditingBid(null);
   };
 
   const finishRound = () => {
+    // Validate total tricks equals round number
+    const totalTricks = Object.values(roundData).reduce((sum, data) => sum + data.tricks, 0);
+    if (totalTricks !== currentRound) {
+      alert(`Total tricks (${totalTricks}) must equal round number (${currentRound})`);
+      return;
+    }
+
     const roundScores: Record<number, RoundScore> = {};
 
     // Check if this round already exists in history (can happen after undo)
@@ -298,9 +304,6 @@ const SkullKingScorer = () => {
       setRoundPhase('bidding');
     } else {
       setRoundPhase('complete');
-      // Reset UI navigation states when game ends
-      setShowHistory(false);
-      setEditingBid(null);
     }
   };
 
@@ -312,9 +315,6 @@ const SkullKingScorer = () => {
     setRoundData({});
     setGameHistory([]);
     setPhaseHistory([]);
-    // Reset UI navigation states
-    setShowHistory(false);
-    setEditingBid(null);
   };
 
   const clearPlayers = () => {
@@ -326,9 +326,6 @@ const SkullKingScorer = () => {
   const endGameEarly = () => {
     if (window.confirm('End the game now? Current scores will be final.')) {
       setRoundPhase('complete');
-      // Reset UI navigation states when ending game
-      setShowHistory(false);
-      setEditingBid(null);
     }
   };
 
