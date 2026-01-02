@@ -321,6 +321,9 @@ const SkullKingScorer = () => {
   const endGameEarly = () => {
     if (window.confirm('End the game now? Current scores will be final.')) {
       setRoundPhase('complete');
+      // Reset UI navigation states when ending game
+      setShowHistory(false);
+      setEditingBid(null);
     }
   };
 
