@@ -21,7 +21,7 @@ interface GameHistoryEntry {
   scores: Record<number, RoundScore>;
 }
 
-interface UndoSnapshot {
+interface PhaseSnapshot {
   roundData: Record<number, PlayerRoundData>;
   players: Player[];
   currentRound: number;
@@ -84,7 +84,9 @@ const SkullKingScorer = () => {
   const [roundPhase, setRoundPhase] = usePersistedState<RoundPhase>('roundPhase', 'bidding');
   const [roundData, setRoundData] = usePersistedState<Record<number, PlayerRoundData>>('roundData', {});
   const [gameHistory, setGameHistory] = usePersistedState<GameHistoryEntry[]>('gameHistory', []);
-  const [undoHistory, setUndoHistory] = usePersistedState<UndoSnapshot[]>('undoHistory', []);
+  const [phaseHistory, setPhaseHistory] = usePersistedState<PhaseSnapshot[]>('phaseHistory', []);
+  const [showHistory, setShowHistory] = useState(false);
+  const [editingBid, setEditingBid] = useState<number | null>(null);
 
   const addPlayer = () => {
     if (playerName.trim() && players.length < 6) {
@@ -97,29 +99,62 @@ const SkullKingScorer = () => {
     setPlayers(players.filter((_, i) => i !== index));
   };
 
-  const saveSnapshot = () => {
-    const snapshot: UndoSnapshot = {
-      roundData: { ...roundData },
+  const savePhaseSnapshot = () => {
+    const snapshot: PhaseSnapshot = {
+      roundData: Object.fromEntries(
+        Object.entries(roundData).map(([k, v]) => [k, { ...v }])
+      ),
       players: players.map(p => ({ ...p })),
       currentRound,
       roundPhase,
-      gameHistory: [...gameHistory]
+      gameHistory: gameHistory.map(entry => ({
+        ...entry,
+        scores: Object.fromEntries(
+          Object.entries(entry.scores).map(([k, v]) => [k, { ...v }])
+        )
+      }))
     };
-    setUndoHistory([...undoHistory, snapshot]);
+    const newHistory = [...phaseHistory, snapshot];
+    // Keep only last 20 snapshots to prevent unbounded growth
+    if (newHistory.length > 20) {
+      newHistory.shift();
+    }
+    setPhaseHistory(newHistory);
   };
 
   const performUndo = () => {
-    if (undoHistory.length === 0) return;
+    if (phaseHistory.length === 0) return;
 
-    const newHistory = [...undoHistory];
+    const newHistory = [...phaseHistory];
     const snapshot = newHistory.pop()!;
-    setUndoHistory(newHistory);
+    setPhaseHistory(newHistory);
 
     setRoundData(snapshot.roundData);
     setPlayers(snapshot.players);
     setCurrentRound(snapshot.currentRound);
     setRoundPhase(snapshot.roundPhase);
     setGameHistory(snapshot.gameHistory);
+  };
+
+  const editHistoryRound = (roundIndex: number, playerIndex: number, field: keyof PlayerRoundData, value: any) => {
+    const updatedHistory = [...gameHistory];
+    updatedHistory[roundIndex].scores[playerIndex] = {
+      ...updatedHistory[roundIndex].scores[playerIndex],
+      [field]: value
+    };
+
+    // Recalculate score for this player in this round
+    const updatedScore = calculateScore(updatedHistory[roundIndex].scores[playerIndex]);
+    updatedHistory[roundIndex].scores[playerIndex].score = updatedScore;
+
+    // Recalculate all player totals from scratch
+    const updatedPlayers = players.map((player, i) => {
+      const total = updatedHistory.reduce((sum, entry) => sum + entry.scores[i].score, 0);
+      return { ...player, totalScore: total };
+    });
+
+    setGameHistory(updatedHistory);
+    setPlayers(updatedPlayers);
   };
 
   const startGame = () => {
@@ -130,12 +165,11 @@ const SkullKingScorer = () => {
       });
       setRoundData(initialRoundData);
       setGameStarted(true);
-      setUndoHistory([]);
+      setPhaseHistory([]);
     }
   };
 
   const setBid = (playerIndex: number, value: number) => {
-    saveSnapshot();
     setRoundData(prev => ({
       ...prev,
       [playerIndex]: { ...prev[playerIndex], bid: value }
@@ -143,7 +177,6 @@ const SkullKingScorer = () => {
   };
 
   const updateTricks = (playerIndex: number, delta: number) => {
-    saveSnapshot();
     setRoundData(prev => ({
       ...prev,
       [playerIndex]: {
@@ -154,7 +187,6 @@ const SkullKingScorer = () => {
   };
 
   const updatePiratesCapture = (playerIndex: number, delta: number) => {
-    saveSnapshot();
     setRoundData(prev => ({
       ...prev,
       [playerIndex]: {
@@ -165,7 +197,6 @@ const SkullKingScorer = () => {
   };
 
   const toggleSkullKingCapture = (playerIndex: number) => {
-    saveSnapshot();
     setRoundData(prev => ({
       ...prev,
       [playerIndex]: {
@@ -199,12 +230,12 @@ const SkullKingScorer = () => {
   };
 
   const confirmBids = () => {
-    saveSnapshot();
+    savePhaseSnapshot();
     setRoundPhase('scoring');
   };
 
   const finishRound = () => {
-    saveSnapshot();
+    savePhaseSnapshot();
     const roundScores: Record<number, RoundScore> = {};
     const updatedPlayers = players.map((player, i) => {
       const score = calculateScore(roundData[i]);
@@ -235,7 +266,7 @@ const SkullKingScorer = () => {
     setRoundPhase('bidding');
     setRoundData({});
     setGameHistory([]);
-    setUndoHistory([]);
+    setPhaseHistory([]);
   };
 
   const clearPlayers = () => {
@@ -355,7 +386,7 @@ const SkullKingScorer = () => {
         <div style={styles.roundHeader}>
           <span style={styles.roundBadge}>Round {currentRound}/10</span>
           <div style={{ display: 'flex', gap: '10px' }}>
-            {undoHistory.length > 0 && (
+            {phaseHistory.length > 0 && (
               <button onClick={performUndo} style={styles.undoBtn}>↶ Undo</button>
             )}
             <button onClick={endGameEarly} style={styles.endGameBtn}>End Game</button>
@@ -408,25 +439,62 @@ const SkullKingScorer = () => {
       <div style={styles.roundHeader}>
         <span style={styles.roundBadge}>Round {currentRound}/10</span>
         <div style={{ display: 'flex', gap: '10px' }}>
-          {undoHistory.length > 0 && (
+          {gameHistory.length > 0 && (
+            <button onClick={() => setShowHistory(!showHistory)} style={styles.historyBtn}>
+              {showHistory ? '← Back' : '📋 History'}
+            </button>
+          )}
+          {phaseHistory.length > 0 && (
             <button onClick={performUndo} style={styles.undoBtn}>↶ Undo</button>
           )}
           <button onClick={endGameEarly} style={styles.endGameBtn}>End Game</button>
         </div>
       </div>
 
-      <h2 style={styles.phaseTitle}>🎯 Record Results</h2>
+      {!showHistory ? (
+        <>
+          <h2 style={styles.phaseTitle}>🎯 Record Results</h2>
 
-      <div style={styles.playersGrid}>
-        {players.map((player, i) => {
-          const data = roundData[i];
-          const bidMet = data.bid === data.tricks;
-          const score = calculateScore(data);
+          <div style={styles.playersGrid}>
+            {players.map((player, i) => {
+              const data = roundData[i];
+              const bidMet = data.bid === data.tricks;
+              const score = calculateScore(data);
 
-          return (
-            <div key={i} style={styles.playerCard}>
-              <div style={styles.playerName}>☠️ {player.name}</div>
-              <div style={styles.bidDisplay}>Bid: {data.bid}</div>
+              return (
+                <div key={i} style={styles.playerCard}>
+                  <div style={styles.playerName}>☠️ {player.name}</div>
+                  {editingBid === i ? (
+                    <div style={styles.bidSection}>
+                      <span style={styles.bidLabel}>Edit Bid</span>
+                      <div style={styles.bidButtons}>
+                        {[...Array(currentRound + 1)].map((_, num) => (
+                          <button
+                            key={num}
+                            onClick={() => {
+                              setBid(i, num);
+                              setEditingBid(null);
+                            }}
+                            style={{
+                              ...styles.bidBtn,
+                              ...(data.bid === num ? styles.bidBtnActive : {})
+                            }}
+                          >
+                            {num}
+                          </button>
+                        ))}
+                      </div>
+                      <button onClick={() => setEditingBid(null)} style={styles.cancelBtn}>Cancel</button>
+                    </div>
+                  ) : (
+                    <div
+                      style={{...styles.bidDisplay, cursor: 'pointer'}}
+                      onClick={() => setEditingBid(i)}
+                      title="Click to edit bid"
+                    >
+                      Bid: {data.bid} ✏️
+                    </div>
+                  )}
 
               <NumberStepper
                 label="Tricks Won"
@@ -474,6 +542,36 @@ const SkullKingScorer = () => {
       <button onClick={finishRound} style={styles.actionBtn}>
         {currentRound < 10 ? '✅ Finish Round' : '🏆 End Game'}
       </button>
+        </>
+      ) : (
+        <>
+          <h2 style={styles.phaseTitle}>📜 Game History</h2>
+          <div style={styles.playersGrid}>
+            {gameHistory.map((entry, roundIndex) => (
+              <div key={roundIndex} style={styles.historyRoundCard}>
+                <h3 style={styles.historyRoundTitle}>Round {entry.round}</h3>
+                {players.map((player, playerIndex) => {
+                  const data = entry.scores[playerIndex];
+                  return (
+                    <div key={playerIndex} style={styles.historyPlayerRow}>
+                      <span style={styles.historyPlayerName}>{player.name}</span>
+                      <div style={styles.historyDetails}>
+                        <span>Bid: {data.bid}</span>
+                        <span>Won: {data.tricks}</span>
+                        {data.piratesCapture > 0 && <span>⚔️ {data.piratesCapture}</span>}
+                        {data.skullKingCapture && <span>🧜‍♀️</span>}
+                        <span style={{color: data.score >= 0 ? '#2ecc40' : '#ff4136', fontWeight: 'bold'}}>
+                          {data.score >= 0 ? '+' : ''}{data.score}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+        </>
+      )}
     </div>
     </>
   );
@@ -649,6 +747,55 @@ const styles: Record<string, React.CSSProperties> = {
     color: '#ffd700',
     cursor: 'pointer',
     fontFamily: 'inherit',
+  },
+  historyBtn: {
+    padding: '8px 16px',
+    fontSize: '12px',
+    border: '1px solid rgba(46,204,64,0.5)',
+    borderRadius: '8px',
+    background: 'rgba(46,204,64,0.1)',
+    color: '#2ecc40',
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+  },
+  cancelBtn: {
+    padding: '8px 16px',
+    fontSize: '12px',
+    border: '1px solid rgba(255,215,0,0.5)',
+    borderRadius: '8px',
+    background: 'transparent',
+    color: '#f4e4bc',
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+    marginTop: '10px',
+  },
+  historyRoundCard: {
+    background: 'linear-gradient(135deg, rgba(139,69,19,0.3) 0%, rgba(101,67,33,0.4) 100%)',
+    borderRadius: '15px',
+    padding: '15px',
+    border: '1px solid rgba(184,134,11,0.5)',
+  },
+  historyRoundTitle: {
+    fontSize: '18px',
+    color: '#ffd700',
+    marginBottom: '10px',
+    marginTop: 0,
+  },
+  historyPlayerRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: '8px 0',
+    borderBottom: '1px solid rgba(255,215,0,0.1)',
+  },
+  historyPlayerName: {
+    fontSize: '16px',
+    fontWeight: 'bold',
+  },
+  historyDetails: {
+    display: 'flex',
+    gap: '10px',
+    fontSize: '14px',
   },
   roundHeader: {
     display: 'flex',
