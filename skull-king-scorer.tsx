@@ -149,6 +149,7 @@ const SkullKingScorer = () => {
 
     // Exit history view after undo to show the restored game state
     setShowHistory(false);
+    setEditingBid(null);
   };
 
   const startGame = () => {
@@ -229,6 +230,7 @@ const SkullKingScorer = () => {
   const confirmBids = () => {
     savePhaseSnapshot();
     setRoundPhase('scoring');
+    setEditingBid(null);
   };
 
   const finishRound = () => {
@@ -288,7 +290,7 @@ const SkullKingScorer = () => {
       setPhaseHistory(newPhaseHistory);
 
       const newRoundData: Record<number, PlayerRoundData> = {};
-      players.forEach((_, i) => {
+      updatedPlayers.forEach((_, i) => {
         newRoundData[i] = { bid: 0, tricks: 0, piratesCapture: 0, skullKingCapture: false };
       });
       setRoundData(newRoundData);
@@ -296,6 +298,9 @@ const SkullKingScorer = () => {
       setRoundPhase('bidding');
     } else {
       setRoundPhase('complete');
+      // Reset UI navigation states when game ends
+      setShowHistory(false);
+      setEditingBid(null);
     }
   };
 
