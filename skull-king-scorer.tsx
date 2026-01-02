@@ -146,6 +146,9 @@ const SkullKingScorer = () => {
         )
       }))
     );
+
+    // Exit history view after undo to show the restored game state
+    setShowHistory(false);
   };
 
   const startGame = () => {
