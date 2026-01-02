@@ -21,6 +21,14 @@ interface GameHistoryEntry {
   scores: Record<number, RoundScore>;
 }
 
+interface UndoSnapshot {
+  roundData: Record<number, PlayerRoundData>;
+  players: Player[];
+  currentRound: number;
+  roundPhase: RoundPhase;
+  gameHistory: GameHistoryEntry[];
+}
+
 type RoundPhase = 'bidding' | 'scoring' | 'complete';
 
 function usePersistedState<T>(key: string, initialValue: T): [T, React.Dispatch<React.SetStateAction<T>>] {
@@ -76,6 +84,7 @@ const SkullKingScorer = () => {
   const [roundPhase, setRoundPhase] = usePersistedState<RoundPhase>('roundPhase', 'bidding');
   const [roundData, setRoundData] = usePersistedState<Record<number, PlayerRoundData>>('roundData', {});
   const [gameHistory, setGameHistory] = usePersistedState<GameHistoryEntry[]>('gameHistory', []);
+  const [undoHistory, setUndoHistory] = usePersistedState<UndoSnapshot[]>('undoHistory', []);
 
   const addPlayer = () => {
     if (playerName.trim() && players.length < 6) {
@@ -88,6 +97,31 @@ const SkullKingScorer = () => {
     setPlayers(players.filter((_, i) => i !== index));
   };
 
+  const saveSnapshot = () => {
+    const snapshot: UndoSnapshot = {
+      roundData: { ...roundData },
+      players: players.map(p => ({ ...p })),
+      currentRound,
+      roundPhase,
+      gameHistory: [...gameHistory]
+    };
+    setUndoHistory([...undoHistory, snapshot]);
+  };
+
+  const performUndo = () => {
+    if (undoHistory.length === 0) return;
+
+    const newHistory = [...undoHistory];
+    const snapshot = newHistory.pop()!;
+    setUndoHistory(newHistory);
+
+    setRoundData(snapshot.roundData);
+    setPlayers(snapshot.players);
+    setCurrentRound(snapshot.currentRound);
+    setRoundPhase(snapshot.roundPhase);
+    setGameHistory(snapshot.gameHistory);
+  };
+
   const startGame = () => {
     if (players.length >= 2) {
       const initialRoundData: Record<number, PlayerRoundData> = {};
@@ -96,10 +130,12 @@ const SkullKingScorer = () => {
       });
       setRoundData(initialRoundData);
       setGameStarted(true);
+      setUndoHistory([]);
     }
   };
 
   const setBid = (playerIndex: number, value: number) => {
+    saveSnapshot();
     setRoundData(prev => ({
       ...prev,
       [playerIndex]: { ...prev[playerIndex], bid: value }
@@ -107,6 +143,7 @@ const SkullKingScorer = () => {
   };
 
   const updateTricks = (playerIndex: number, delta: number) => {
+    saveSnapshot();
     setRoundData(prev => ({
       ...prev,
       [playerIndex]: {
@@ -117,6 +154,7 @@ const SkullKingScorer = () => {
   };
 
   const updatePiratesCapture = (playerIndex: number, delta: number) => {
+    saveSnapshot();
     setRoundData(prev => ({
       ...prev,
       [playerIndex]: {
@@ -127,6 +165,7 @@ const SkullKingScorer = () => {
   };
 
   const toggleSkullKingCapture = (playerIndex: number) => {
+    saveSnapshot();
     setRoundData(prev => ({
       ...prev,
       [playerIndex]: {
@@ -160,10 +199,12 @@ const SkullKingScorer = () => {
   };
 
   const confirmBids = () => {
+    saveSnapshot();
     setRoundPhase('scoring');
   };
 
   const finishRound = () => {
+    saveSnapshot();
     const roundScores: Record<number, RoundScore> = {};
     const updatedPlayers = players.map((player, i) => {
       const score = calculateScore(roundData[i]);
@@ -194,6 +235,7 @@ const SkullKingScorer = () => {
     setRoundPhase('bidding');
     setRoundData({});
     setGameHistory([]);
+    setUndoHistory([]);
   };
 
   const clearPlayers = () => {
@@ -312,7 +354,12 @@ const SkullKingScorer = () => {
         <div style={styles.container}>
         <div style={styles.roundHeader}>
           <span style={styles.roundBadge}>Round {currentRound}/10</span>
-          <button onClick={endGameEarly} style={styles.endGameBtn}>End Game</button>
+          <div style={{ display: 'flex', gap: '10px' }}>
+            {undoHistory.length > 0 && (
+              <button onClick={performUndo} style={styles.undoBtn}>↶ Undo</button>
+            )}
+            <button onClick={endGameEarly} style={styles.endGameBtn}>End Game</button>
+          </div>
         </div>
 
         <h2 style={styles.phaseTitle}>🤞 Place Yer Bids!</h2>
@@ -360,7 +407,12 @@ const SkullKingScorer = () => {
       <div style={styles.container}>
       <div style={styles.roundHeader}>
         <span style={styles.roundBadge}>Round {currentRound}/10</span>
-        <button onClick={endGameEarly} style={styles.endGameBtn}>End Game</button>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          {undoHistory.length > 0 && (
+            <button onClick={performUndo} style={styles.undoBtn}>↶ Undo</button>
+          )}
+          <button onClick={endGameEarly} style={styles.endGameBtn}>End Game</button>
+        </div>
       </div>
 
       <h2 style={styles.phaseTitle}>🎯 Record Results</h2>
@@ -585,6 +637,16 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: '8px',
     background: 'rgba(255,65,54,0.1)',
     color: '#ff4136',
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+  },
+  undoBtn: {
+    padding: '8px 16px',
+    fontSize: '12px',
+    border: '1px solid rgba(255,215,0,0.5)',
+    borderRadius: '8px',
+    background: 'rgba(255,215,0,0.1)',
+    color: '#ffd700',
     cursor: 'pointer',
     fontFamily: 'inherit',
   },
