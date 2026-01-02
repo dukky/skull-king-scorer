@@ -129,32 +129,23 @@ const SkullKingScorer = () => {
     const snapshot = newHistory.pop()!;
     setPhaseHistory(newHistory);
 
-    setRoundData(snapshot.roundData);
-    setPlayers(snapshot.players);
+    // Deep clone when restoring to prevent mutation of snapshot
+    setRoundData(
+      Object.fromEntries(
+        Object.entries(snapshot.roundData).map(([k, v]) => [k, { ...v }])
+      )
+    );
+    setPlayers(snapshot.players.map(p => ({ ...p })));
     setCurrentRound(snapshot.currentRound);
     setRoundPhase(snapshot.roundPhase);
-    setGameHistory(snapshot.gameHistory);
-  };
-
-  const editHistoryRound = (roundIndex: number, playerIndex: number, field: keyof PlayerRoundData, value: any) => {
-    const updatedHistory = [...gameHistory];
-    updatedHistory[roundIndex].scores[playerIndex] = {
-      ...updatedHistory[roundIndex].scores[playerIndex],
-      [field]: value
-    };
-
-    // Recalculate score for this player in this round
-    const updatedScore = calculateScore(updatedHistory[roundIndex].scores[playerIndex]);
-    updatedHistory[roundIndex].scores[playerIndex].score = updatedScore;
-
-    // Recalculate all player totals from scratch
-    const updatedPlayers = players.map((player, i) => {
-      const total = updatedHistory.reduce((sum, entry) => sum + entry.scores[i].score, 0);
-      return { ...player, totalScore: total };
-    });
-
-    setGameHistory(updatedHistory);
-    setPlayers(updatedPlayers);
+    setGameHistory(
+      snapshot.gameHistory.map(entry => ({
+        ...entry,
+        scores: Object.fromEntries(
+          Object.entries(entry.scores).map(([k, v]) => [k, { ...v }])
+        )
+      }))
+    );
   };
 
   const startGame = () => {
@@ -235,7 +226,6 @@ const SkullKingScorer = () => {
   };
 
   const finishRound = () => {
-    savePhaseSnapshot();
     const roundScores: Record<number, RoundScore> = {};
     const updatedPlayers = players.map((player, i) => {
       const score = calculateScore(roundData[i]);
@@ -243,10 +233,33 @@ const SkullKingScorer = () => {
       return { ...player, totalScore: player.totalScore + score };
     });
 
-    setGameHistory([...gameHistory, { round: currentRound, scores: roundScores }]);
+    const updatedHistory = [...gameHistory, { round: currentRound, scores: roundScores }];
+
+    setGameHistory(updatedHistory);
     setPlayers(updatedPlayers);
 
     if (currentRound < 10) {
+      // Save snapshot with updated values BEFORE moving to next round
+      const snapshot: PhaseSnapshot = {
+        roundData: Object.fromEntries(
+          Object.entries(roundData).map(([k, v]) => [k, { ...v }])
+        ),
+        players: updatedPlayers.map(p => ({ ...p })),
+        currentRound,
+        roundPhase: 'scoring',
+        gameHistory: updatedHistory.map(entry => ({
+          ...entry,
+          scores: Object.fromEntries(
+            Object.entries(entry.scores).map(([k, v]) => [k, { ...v }])
+          )
+        }))
+      };
+      const newPhaseHistory = [...phaseHistory, snapshot];
+      if (newPhaseHistory.length > 20) {
+        newPhaseHistory.shift();
+      }
+      setPhaseHistory(newPhaseHistory);
+
       const newRoundData: Record<number, PlayerRoundData> = {};
       players.forEach((_, i) => {
         newRoundData[i] = { bid: 0, tricks: 0, piratesCapture: 0, skullKingCapture: false };
@@ -487,6 +500,8 @@ const SkullKingScorer = () => {
                       <button onClick={() => setEditingBid(null)} style={styles.cancelBtn}>Cancel</button>
                     </div>
                   ) : (
+                    // Pencil icon ✏️ always visible (good for mobile - no hover state)
+                    // Cursor pointer + title provide additional affordance on desktop
                     <div
                       style={{...styles.bidDisplay, cursor: 'pointer'}}
                       onClick={() => setEditingBid(i)}
