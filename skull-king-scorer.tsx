@@ -157,6 +157,9 @@ const SkullKingScorer = () => {
       setRoundData(initialRoundData);
       setGameStarted(true);
       setPhaseHistory([]);
+      // Reset UI navigation states
+      setShowHistory(false);
+      setEditingBid(null);
     }
   };
 
@@ -280,6 +283,9 @@ const SkullKingScorer = () => {
     setRoundData({});
     setGameHistory([]);
     setPhaseHistory([]);
+    // Reset UI navigation states
+    setShowHistory(false);
+    setEditingBid(null);
   };
 
   const clearPlayers = () => {
