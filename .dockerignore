@@ -1,0 +1,30 @@
+# .dockerignore - tells Docker what NOT to copy into the build context
+# This speeds up builds by reducing the amount of data sent to Docker daemon
+
+# Dependencies - will be installed via npm ci
+node_modules
+
+# Build output - will be generated during docker build
+dist
+
+# Git files - not needed in container
+.git
+.gitignore
+
+# Development files
+*.log
+.env
+.env.local
+
+# Editor files
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Documentation
+README.md
