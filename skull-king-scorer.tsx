@@ -33,8 +33,12 @@ type RoundPhase = 'bidding' | 'scoring' | 'complete';
 
 function usePersistedState<T>(key: string, initialValue: T): [T, React.Dispatch<React.SetStateAction<T>>] {
   const [value, setValue] = useState<T>(() => {
-    const stored = localStorage.getItem(`skullking_${key}`);
-    return stored ? JSON.parse(stored) : initialValue;
+    try {
+      const stored = localStorage.getItem(`skullking_${key}`);
+      return stored ? JSON.parse(stored) : initialValue;
+    } catch {
+      return initialValue;
+    }
   });
 
   useEffect(() => {
@@ -175,33 +179,45 @@ const SkullKingScorer = () => {
   };
 
   const updateTricks = (playerIndex: number, delta: number) => {
-    setRoundData(prev => ({
-      ...prev,
-      [playerIndex]: {
-        ...prev[playerIndex],
-        tricks: Math.max(0, Math.min(currentRound, prev[playerIndex].tricks + delta))
-      }
-    }));
+    setRoundData(prev => {
+      const current = prev[playerIndex];
+      if (!current) return prev;
+      return {
+        ...prev,
+        [playerIndex]: {
+          ...current,
+          tricks: Math.max(0, Math.min(currentRound, current.tricks + delta))
+        }
+      };
+    });
   };
 
   const updatePiratesCapture = (playerIndex: number, delta: number) => {
-    setRoundData(prev => ({
-      ...prev,
-      [playerIndex]: {
-        ...prev[playerIndex],
-        piratesCapture: Math.max(0, Math.min(5, prev[playerIndex].piratesCapture + delta))
-      }
-    }));
+    setRoundData(prev => {
+      const current = prev[playerIndex];
+      if (!current) return prev;
+      return {
+        ...prev,
+        [playerIndex]: {
+          ...current,
+          piratesCapture: Math.max(0, Math.min(5, current.piratesCapture + delta))
+        }
+      };
+    });
   };
 
   const toggleSkullKingCapture = (playerIndex: number) => {
-    setRoundData(prev => ({
-      ...prev,
-      [playerIndex]: {
-        ...prev[playerIndex],
-        skullKingCapture: !prev[playerIndex].skullKingCapture
-      }
-    }));
+    setRoundData(prev => {
+      const current = prev[playerIndex];
+      if (!current) return prev;
+      return {
+        ...prev,
+        [playerIndex]: {
+          ...current,
+          skullKingCapture: !current.skullKingCapture
+        }
+      };
+    });
   };
 
   const calculateScore = (data: PlayerRoundData): number => {
@@ -255,7 +271,7 @@ const SkullKingScorer = () => {
         ? [...gameHistory.slice(0, existingRoundIndex), ...gameHistory.slice(existingRoundIndex + 1)]
         : gameHistory;
 
-      const previousTotal = previousRounds.reduce((sum, entry) => sum + entry.scores[i].score, 0);
+      const previousTotal = previousRounds.reduce((sum, entry) => sum + (entry.scores[i]?.score ?? 0), 0);
       const total = previousTotal + score;
 
       return { ...player, totalScore: total };
