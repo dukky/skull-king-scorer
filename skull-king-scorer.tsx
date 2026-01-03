@@ -355,8 +355,9 @@ const SkullKingScorer = () => {
       <>
         <div style={styles.fixedBackground}></div>
         <div style={styles.container}>
+        <a href="/Skull_King_rules_eng.pdf" target="_blank" rel="noopener noreferrer" style={styles.helpBtn}>?</a>
         <div style={styles.header}>
-          <div style={styles.skull}>💀</div>
+          <div style={styles.skull}>☠️</div>
           <h1 style={styles.title}>Skull King</h1>
           <p style={styles.subtitle}>Yo-Ho-Ho!</p>
         </div>
