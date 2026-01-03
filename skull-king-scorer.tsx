@@ -110,6 +110,9 @@ const SkullKingScorer = () => {
     setPlayers(players.filter((_, i) => i !== index));
   };
 
+  // Deep clone state for undo snapshots - without this, saved snapshots would hold
+  // references to live objects, so mutations to current state would corrupt history.
+  // Could simplify with structuredClone() if manual cloning becomes unwieldy.
   const savePhaseSnapshot = () => {
     const snapshot: PhaseSnapshot = {
       roundData: Object.fromEntries(
