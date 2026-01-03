@@ -54,11 +54,9 @@ RUN npm ci --omit=dev
 # This is the only thing we need from stage 1 - the compiled dist/ folder
 COPY --from=builder /app/dist ./dist
 
-# Expose port 5000 (required for Dokku to detect web process)
-EXPOSE 5000
-
 # Start the application using the same command as before
 # Uses the 'serve' package to serve the static files
+# Dokku will automatically inject PORT=5000 and proxy 80/443 to it
 CMD ["npm", "start"]
 
 # ============================================================================
