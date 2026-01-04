@@ -455,6 +455,11 @@ const SkullKingScorer = () => {
         <div style={styles.roundHeader}>
           <span style={styles.roundBadge}>Round {currentRound}/10</span>
           <div style={{ display: 'flex', gap: '10px' }}>
+            {gameHistory.length > 0 && (
+              <button onClick={() => setShowHistory(!showHistory)} style={styles.historyBtn}>
+                {showHistory ? '← Back' : '📋 History'}
+              </button>
+            )}
             {phaseHistory.length > 0 && (
               <button onClick={performUndo} style={styles.undoBtn}>↶ Undo</button>
             )}
@@ -462,39 +467,71 @@ const SkullKingScorer = () => {
           </div>
         </div>
 
-        <h2 style={styles.phaseTitle}>🤞 Place Yer Bids!</h2>
-        <p style={styles.phaseHint}>How many tricks will ye win?</p>
+        {!showHistory ? (
+          <>
+            <h2 style={styles.phaseTitle}>🤞 Place Yer Bids!</h2>
+            <p style={styles.phaseHint}>How many tricks will ye win?</p>
 
-        <div style={styles.playersGrid}>
-          {players.map((player, i) => (
-            <div key={i} style={styles.playerCard}>
-              <div style={styles.playerName}>☠️ {player.name}</div>
-              <div style={styles.totalScore}>Total: {player.totalScore}</div>
+            <div style={styles.playersGrid}>
+              {players.map((player, i) => (
+                <div key={i} style={styles.playerCard}>
+                  <div style={styles.playerName}>☠️ {player.name}</div>
+                  <div style={styles.totalScore}>Total: {player.totalScore}</div>
 
-              <div style={styles.bidSection}>
-                <span style={styles.bidLabel}>Bid</span>
-                <div style={styles.bidButtons}>
-                  {[...Array(currentRound + 1)].map((_, num) => (
-                    <button
-                      key={num}
-                      onClick={() => setBid(i, num)}
-                      style={{
-                        ...styles.bidBtn,
-                        ...(roundData[i]?.bid === num ? styles.bidBtnActive : {})
-                      }}
-                    >
-                      {num}
-                    </button>
-                  ))}
+                  <div style={styles.bidSection}>
+                    <span style={styles.bidLabel}>Bid</span>
+                    <div style={styles.bidButtons}>
+                      {[...Array(currentRound + 1)].map((_, num) => (
+                        <button
+                          key={num}
+                          onClick={() => setBid(i, num)}
+                          style={{
+                            ...styles.bidBtn,
+                            ...(roundData[i]?.bid === num ? styles.bidBtnActive : {})
+                          }}
+                        >
+                          {num}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
-              </div>
+              ))}
             </div>
-          ))}
-        </div>
 
-        <button onClick={confirmBids} style={styles.actionBtn}>
-          ⚔️ Start Round!
-        </button>
+            <button onClick={confirmBids} style={styles.actionBtn}>
+              ⚔️ Start Round!
+            </button>
+          </>
+        ) : (
+          <>
+            <h2 style={styles.phaseTitle}>📜 Game History</h2>
+            <div style={styles.playersGrid}>
+              {gameHistory.map((entry, roundIndex) => (
+                <div key={roundIndex} style={styles.historyRoundCard}>
+                  <h3 style={styles.historyRoundTitle}>Round {entry.round}</h3>
+                  {players.map((player, playerIndex) => {
+                    const data = entry.scores[playerIndex];
+                    return (
+                      <div key={playerIndex} style={styles.historyPlayerRow}>
+                        <span style={styles.historyPlayerName}>{player.name}</span>
+                        <div style={styles.historyDetails}>
+                          <span>Bid: {data.bid}</span>
+                          <span>Won: {data.tricks}</span>
+                          {data.piratesCapture > 0 && <span>⚔️ {data.piratesCapture}</span>}
+                          {data.skullKingCapture && <span>🧜‍♀️</span>}
+                          <span style={{color: data.score >= 0 ? '#2ecc40' : '#ff4136', fontWeight: 'bold'}}>
+                            {data.score >= 0 ? '+' : ''}{data.score}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
+          </>
+        )}
       </div>
       </>
     );
