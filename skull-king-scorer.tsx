@@ -92,11 +92,13 @@ const SkullKingScorer = () => {
   const [phaseHistory, setPhaseHistory] = usePersistedState<PhaseSnapshot[]>('phaseHistory', []);
   const [showHistory, setShowHistory] = useState(false);
   const [editingBid, setEditingBid] = useState<number | null>(null);
+  const [showRoundSummary, setShowRoundSummary] = useState(false);
 
   // Reset transient UI state when phase or round changes
   useEffect(() => {
     setShowHistory(false);
     setEditingBid(null);
+    setShowRoundSummary(false);
   }, [currentRound, roundPhase]);
 
   const addPlayer = () => {
@@ -161,6 +163,8 @@ const SkullKingScorer = () => {
       }))
     );
 
+    // Reset summary view - critical when undoing from summary since phase/round may not change
+    setShowRoundSummary(false);
   };
 
   const startGame = () => {
@@ -293,30 +297,35 @@ const SkullKingScorer = () => {
     setGameHistory(updatedHistory);
     setPlayers(updatedPlayers);
 
-    if (currentRound < 10) {
-      // Save snapshot with updated values BEFORE moving to next round
-      const snapshot: PhaseSnapshot = {
-        roundData: Object.fromEntries(
-          Object.entries(roundData).map(([k, v]) => [k, { ...v }])
-        ),
-        players: updatedPlayers.map(p => ({ ...p })),
-        currentRound,
-        roundPhase: 'scoring',
-        gameHistory: updatedHistory.map(entry => ({
-          ...entry,
-          scores: Object.fromEntries(
-            Object.entries(entry.scores).map(([k, v]) => [k, { ...v }])
-          )
-        }))
-      };
-      const newPhaseHistory = [...phaseHistory, snapshot];
-      if (newPhaseHistory.length > 20) {
-        newPhaseHistory.shift();
-      }
-      setPhaseHistory(newPhaseHistory);
+    // Save snapshot for undo (all rounds including round 10)
+    const snapshot: PhaseSnapshot = {
+      roundData: Object.fromEntries(
+        Object.entries(roundData).map(([k, v]) => [k, { ...v }])
+      ),
+      players: updatedPlayers.map(p => ({ ...p })),
+      currentRound,
+      roundPhase: 'scoring',
+      gameHistory: updatedHistory.map(entry => ({
+        ...entry,
+        scores: Object.fromEntries(
+          Object.entries(entry.scores).map(([k, v]) => [k, { ...v }])
+        )
+      }))
+    };
+    const newPhaseHistory = [...phaseHistory, snapshot];
+    if (newPhaseHistory.length > 20) {
+      newPhaseHistory.shift();
+    }
+    setPhaseHistory(newPhaseHistory);
 
+    // Show summary instead of transitioning immediately
+    setShowRoundSummary(true);
+  };
+
+  const continueFromSummary = () => {
+    if (currentRound < 10) {
       const newRoundData: Record<number, PlayerRoundData> = {};
-      updatedPlayers.forEach((_, i) => {
+      players.forEach((_, i) => {
         newRoundData[i] = { bid: 0, tricks: 0, piratesCapture: 0, skullKingCapture: false };
       });
       setRoundData(newRoundData);
@@ -538,6 +547,65 @@ const SkullKingScorer = () => {
   }
 
   // Scoring Phase
+  if (showRoundSummary) {
+    // Round Summary View - shown after finishing a round
+    const currentRoundData = gameHistory.find(h => h.round === currentRound);
+    return (
+      <>
+        <div style={styles.fixedBackground}></div>
+        <div style={styles.container}>
+          <div style={styles.roundHeader}>
+            <span style={styles.roundBadge}>Round {currentRound}/10</span>
+            {phaseHistory.length > 0 && (
+              <button onClick={performUndo} style={styles.undoBtn}>↶ Undo</button>
+            )}
+          </div>
+
+          <h2 style={styles.phaseTitle}>
+            {currentRound === 10 ? '🏆 Final Round Complete!' : `⚓ Round ${currentRound} Complete!`}
+          </h2>
+
+          <div style={styles.playersGrid}>
+            {players.map((player, i) => {
+              const data = currentRoundData?.scores[i];
+              if (!data) return null;
+              return (
+                <div key={i} style={styles.playerCard}>
+                  <div style={styles.playerName}>☠️ {player.name}</div>
+                  <div style={styles.summaryRow}>
+                    <span>Bid: {data.bid}</span>
+                    <span>Won: {data.tricks}</span>
+                    {data.bid === data.tricks ? <span style={{color: '#2ecc40'}}>✓</span> : <span style={{color: '#ff4136'}}>✗</span>}
+                  </div>
+                  {data.piratesCapture > 0 && (
+                    <div style={styles.summaryBonus}>⚔️ Pirates captured: {data.piratesCapture} (+{data.piratesCapture * 30})</div>
+                  )}
+                  {data.skullKingCapture && (
+                    <div style={styles.summaryBonus}>🧜‍♀️ Mermaid caught Skull King (+50)</div>
+                  )}
+                  <div style={styles.summaryScoreRow}>
+                    <span style={{
+                      fontSize: '24px',
+                      fontWeight: 'bold',
+                      color: data.score >= 0 ? '#2ecc40' : '#ff4136'
+                    }}>
+                      {data.score >= 0 ? '+' : ''}{data.score}
+                    </span>
+                    <span style={{opacity: 0.7}}>Total: {player.totalScore}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <button onClick={continueFromSummary} style={styles.actionBtn}>
+            {currentRound < 10 ? `Continue to Round ${currentRound + 1} →` : '🏆 See Final Standings'}
+          </button>
+        </div>
+      </>
+    );
+  }
+
   return (
     <>
       <div style={styles.fixedBackground}></div>
@@ -648,7 +716,7 @@ const SkullKingScorer = () => {
       </div>
 
       <button onClick={finishRound} style={styles.actionBtn}>
-        {currentRound < 10 ? '✅ Finish Round' : '🏆 End Game'}
+        ✅ Finish Round
       </button>
         </>
       ) : (

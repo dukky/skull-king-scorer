@@ -243,6 +243,27 @@ export const styles: Record<string, React.CSSProperties> = {
     gap: '10px',
     fontSize: '14px',
   },
+  summaryRow: {
+    display: 'flex',
+    gap: '20px',
+    fontSize: '16px',
+    marginBottom: '10px',
+    opacity: 0.9,
+  },
+  summaryBonus: {
+    fontSize: '14px',
+    color: '#ffd700',
+    marginBottom: '5px',
+  },
+  summaryScoreRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'baseline',
+    marginTop: '15px',
+    padding: '12px 15px',
+    background: 'rgba(0,0,0,0.2)',
+    borderRadius: '8px',
+  },
   roundHeader: {
     display: 'flex',
     justifyContent: 'space-between',
