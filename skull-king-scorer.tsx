@@ -204,7 +204,7 @@ const SkullKingScorer = () => {
         ...prev,
         [playerIndex]: {
           ...current,
-          piratesCapture: Math.max(0, Math.min(5, current.piratesCapture + delta))
+          piratesCapture: Math.max(0, Math.min(6, current.piratesCapture + delta))
         }
       };
     });
@@ -621,7 +621,7 @@ const SkullKingScorer = () => {
                     value={data.piratesCapture}
                     onDecrement={() => updatePiratesCapture(i, -1)}
                     onIncrement={() => updatePiratesCapture(i, 1)}
-                    max={5}
+                    max={6}
                   />
 
                   <button
